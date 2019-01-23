@@ -99,7 +99,6 @@ See https://www.ristretto.group for details, once that site is up.
 
  cmake -DCMAKE_INSTALL_PREFIX=<Install path> <path to root directory>
  make
- make test
  make install
 
 Most C source code is generated through a python script during the build.
@@ -109,6 +108,15 @@ cross-compilation. The build script update them when their dependencies
 are modified, to build only these files:
 
  make decaf_tables
+
+## Testing
+
+To enable testing, use -DENABLE_TESTS=On in your cmake command:
+ cmake -DENABLE_TESTS=On <path to root directory>
+ make
+ make test
+
+## Documentation
 
 Doxygen generated documentation is located in ./doc directory in the
 binary tree after running

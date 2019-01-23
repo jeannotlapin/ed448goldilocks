@@ -21,13 +21,13 @@ void gf_serialize (uint8_t serial[SER_BYTES], const gf x, int with_hibit) {
     
     unsigned int j=0, fill=0;
     dword_t buffer = 0;
-    UNROLL for (unsigned int i=0; i<(with_hibit ? X_SER_BYTES : SER_BYTES); i++) {
+    UNROLL for (unsigned int i=0; i<(unsigned int)(with_hibit ? X_SER_BYTES : SER_BYTES); i++) {
         if (fill < 8 && j < NLIMBS) {
             buffer |= ((dword_t)red->limb[LIMBPERM(j)]) << fill;
             fill += LIMB_PLACE_VALUE(LIMBPERM(j));
             j++;
         }
-        serial[i] = buffer;
+        serial[i] = (uint8_t)buffer;
         fill -= 8;
         buffer >>= 8;
     }
@@ -38,7 +38,7 @@ mask_t gf_hibit(const gf x) {
     gf y;
     gf_add(y,x,x);
     gf_strong_reduce(y);
-    return -(y->limb[0]&1);
+    return (y->limb[0]&1)?DECAF_MASK_ALL_SET:DECAF_MASK_ALL_UNSET;
 }
 
 /** Return high bit of x = low bit of 2x mod p */
@@ -46,7 +46,7 @@ mask_t gf_lobit(const gf x) {
     gf y;
     gf_copy(y,x);
     gf_strong_reduce(y);
-    return -(y->limb[0]&1);
+    return (y->limb[0]&1)?DECAF_MASK_ALL_SET:DECAF_MASK_ALL_UNSET;
 }
 
 /** Deserialize from wire format; return -1 on success and 0 on failure. */
@@ -54,22 +54,22 @@ mask_t gf_deserialize (gf x, const uint8_t serial[SER_BYTES], int with_hibit, ui
     unsigned int j=0, fill=0;
     dword_t buffer = 0;
     dsword_t scarry = 0;
-    const unsigned nbytes = with_hibit ? X_SER_BYTES : SER_BYTES;
+    const unsigned int nbytes = with_hibit ? X_SER_BYTES : SER_BYTES;
     UNROLL for (unsigned int i=0; i<NLIMBS; i++) {
-        UNROLL while (fill < LIMB_PLACE_VALUE(LIMBPERM(i)) && j < nbytes) {
+        UNROLL while (fill < (unsigned int)(LIMB_PLACE_VALUE(LIMBPERM(i))) && j < nbytes) {
             uint8_t sj = serial[j];
             if (j==nbytes-1) sj &= ~hi_nmask;
             buffer |= ((dword_t)sj) << fill;
             fill += 8;
             j++;
         }
-        x->limb[LIMBPERM(i)] = (i<NLIMBS-1) ? buffer & LIMB_MASK(LIMBPERM(i)) : buffer;
+        x->limb[LIMBPERM(i)] = (word_t)((i<NLIMBS-1) ? buffer & LIMB_MASK(LIMBPERM(i)) : buffer);
         fill -= LIMB_PLACE_VALUE(LIMBPERM(i));
         buffer >>= LIMB_PLACE_VALUE(LIMBPERM(i));
         scarry = (scarry + x->limb[LIMBPERM(i)] - MODULUS->limb[LIMBPERM(i)]) >> (8*sizeof(word_t));
     }
-    mask_t succ = with_hibit ? -(mask_t)1 : ~gf_hibit(x);
-    return succ & word_is_zero(buffer) & ~word_is_zero(scarry);
+    mask_t succ = with_hibit ? DECAF_MASK_ALL_SET : ~gf_hibit(x);
+    return succ & word_is_zero((word_t)buffer) & ~word_is_zero((word_t)scarry);
 }
 
 /** Reduce to canonical form. */
@@ -93,7 +93,7 @@ void gf_strong_reduce (gf a) {
      */
     assert(word_is_zero(scarry) | word_is_zero(scarry+1));
 
-    word_t scarry_0 = scarry;
+    word_t scarry_0 = (word_t)scarry;
     dword_t carry = 0;
 
     /* add it back */
